@@ -69,6 +69,14 @@ class AgentRegistry:
         })
         return agent
 
+    def add_event(self, agent_id, actor, event):
+        self._events.insert(0, {
+            "time": datetime.now(timezone.utc).isoformat(),
+            "agent_id": agent_id,
+            "actor": actor,
+            "event": event,
+        })
+
     def events(self):
         return self._events[:50]
 

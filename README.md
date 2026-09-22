@@ -1,12 +1,25 @@
-# Crypto AI Multi-Agent — V0.4.0
+# Crypto AI Multi-Agent — V0.6.0
 
-AI Financial Office: command center, broker configuration, reports, team/vacancy management, Chief Advisor and Owner governance.
+AI Financial Office with a Command Center, Owner governance, team roles, broker configuration, reports, Chief chat, and a safe end-to-end simulation workflow.
 
-### Menu
-Dashboard · Corretora · Relatórios · Gestão da equipa · Chefe · Governance
+## What works in V0.6
+- FastAPI API and dashboard on Vercel.
+- Four current agents with missions and skills.
+- Owner-only agent activation/deactivation.
+- Team vacancies with financial-market skills.
+- Broker configuration in PAPER/READ_ONLY/LIVE labels; **no real secrets are stored**.
+- Reports and Chief/Advisor conversation.
+- **End-to-end test mission**: Manager → Market Scanner → Risk → Manager.
+- Simulation never submits a real order and explicitly returns `NO_LIVE_TRADE`.
 
-### Broker security
-V0.4 records provider/mode/permissions only. It intentionally does **not** persist API keys or secrets. Production must use the broker's official OAuth/API flow, least-privilege permissions, secure server-side secret storage and audit logs.
+## Test
+Open `/dashboard`, select **Missões**, and run a cycle with a small test capital value.
 
-### Financial operating mandate
-The office is designed around process: regular contributions, diversification, cost control, risk budgets and auditability. It does not guarantee returns or constitute a personalized investment recommendation.
+API:
+- `POST /office/test-cycle`
+- `GET /office/missions`
+- `GET /dashboard/state`
+- `GET /docs`
+
+## Safety boundary
+This release is an architecture and simulation test. It is not connected to a broker and does not execute real trades. Real broker execution requires a dedicated connector, secure secret management, audit trail, risk limits, paper testing and explicit Owner controls.
