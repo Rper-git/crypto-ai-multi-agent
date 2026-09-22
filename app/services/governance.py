@@ -22,8 +22,15 @@ class GovernanceService:
         return self.requests
 
     def decide(self, request_id, decision, owner_id):
+        if owner_id != self.owner_id:
+            raise PermissionError("Only Owner can approve or reject agent requests.")
+        if decision not in {"APPROVED", "REJECTED"}:
+            raise ValueError("Decision must be APPROVED or REJECTED.")
+
         for item in self.requests:
             if item["id"] == request_id:
+                if item["status"] != "PENDING":
+                    raise ValueError("Only PENDING requests can be decided.")
                 item["status"] = decision
                 item["decided_at"] = datetime.now(timezone.utc).isoformat()
                 item["decided_by"] = owner_id
