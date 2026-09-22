@@ -1,38 +1,13 @@
-# Architecture V0.1
+# Arquitetura V0.7
 
 ```text
-                         OWNER
-                           |
-                 approve / reject
-                           |
-                           v
-                    GOVERNANCE LAYER
-                           |
-                           v
-+------------------------------------------------+
-|              MANAGER — AGENT 01                |
-|     coordinates, evaluates, requests agents   |
-+------------------------+-----------------------+
+MARKET DATA -> FastAPI -> Dashboard + Market Scanner
                          |
-              existing agents / requests
+OWNER -> Manager -> agentes -> Risk -> Governance -> Executor
                          |
-        +----------------+----------------+
-        |                |                |
-        v                v                v
-     Scanner           Risk           Executor
-     research         controls        DISABLED
+                    Audit/Reports
+                         |
+                    Broker Adapter
 ```
 
-## Core rule
-
-The Manager is not the Owner.
-
-The Manager may say:
-
-> "I need a Pattern Agent because the current agents cannot perform structured technical-pattern analysis."
-
-It must produce a justification report. The request is stored as `PENDING`.
-
-The Owner decides.
-
-Only an `APPROVED` request can later become an authorized agent creation operation.
+A UI não deve falar diretamente com a corretora. O backend será o único ponto de integração.

@@ -1,25 +1,36 @@
-# Crypto AI Multi-Agent — V0.6.0
+# Crypto AI Multi-Agent Trading Office — V0.7.0
 
-AI Financial Office with a Command Center, Owner governance, team roles, broker configuration, reports, Chief chat, and a safe end-to-end simulation workflow.
+Rebuild do Command Center com interface de trading office, ticker de mercado, escritório 32-bit, equipe, missões, relatórios, chat com Manager, governance e área preparada para corretora.
 
-## What works in V0.6
-- FastAPI API and dashboard on Vercel.
-- Four current agents with missions and skills.
-- Owner-only agent activation/deactivation.
-- Team vacancies with financial-market skills.
-- Broker configuration in PAPER/READ_ONLY/LIVE labels; **no real secrets are stored**.
-- Reports and Chief/Advisor conversation.
-- **End-to-end test mission**: Manager → Market Scanner → Risk → Manager.
-- Simulation never submits a real order and explicitly returns `NO_LIVE_TRADE`.
+## Estado desta versão
+- Dados públicos de mercado: Binance 24h ticker via backend.
+- Fallback local caso a API de mercado falhe.
+- Corretora: não conectada.
+- Trading LIVE: bloqueado.
+- Missões: teste de fluxo Manager → Scanner → Risk → Executor.
+- Executor: bloqueado por Governance.
 
-## Test
-Open `/dashboard`, select **Missões**, and run a cycle with a small test capital value.
+## Executar localmente
+```bash
+python -m venv .venv
+# Windows: .venv\\Scripts\\activate
+# Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+python run.py
+```
+Abra `http://localhost:8000`.
 
-API:
-- `POST /office/test-cycle`
-- `GET /office/missions`
-- `GET /dashboard/state`
-- `GET /docs`
+## Vercel
+O projeto inclui `vercel.json` e usa `app/main.py` como função Python. Faça push para GitHub e importe o repositório na Vercel.
 
-## Safety boundary
-This release is an architecture and simulation test. It is not connected to a broker and does not execute real trades. Real broker execution requires a dedicated connector, secure secret management, audit trail, risk limits, paper testing and explicit Owner controls.
+## API
+- `/health`
+- `/api/market`
+- `/api/office`
+- `/api/portfolio`
+- `/api/reports`
+- `POST /api/chat`
+- `POST /api/missions`
+
+## Segurança
+Nunca coloque chaves da corretora no JavaScript. A futura integração deve guardar credenciais apenas no backend/variáveis de ambiente, começar em READ ONLY e usar permissões mínimas.
