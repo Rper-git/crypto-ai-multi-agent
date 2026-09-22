@@ -1,49 +1,37 @@
-# Crypto AI Multi-Agent — V0.2.0
+# Crypto AI Multi-Agent — V0.3.0 Agent Office
 
-Sistema inicial de orquestração multi-agente para análise de trading.
+Sistema privado de orquestração multi-agente para pesquisa e futura execução de trading.
 
-## Princípio de governança
+## O que mudou na V0.3.0
 
-O **Manager / Agent 01** coordena o sistema. Ele pode identificar a necessidade de um novo agente, mas **não pode criá-lo sozinho**.
+- **Agent Office** em `/dashboard`.
+- Botão do Owner para colocar o **Executor** a trabalhar.
+- Botões para parar agentes ativos (exceto o Manager).
+- Estado do escritório calculado a partir do `AgentRegistry`.
+- Feed de eventos de controlo.
+- Caixa **Conversa com o Chefe** em `/office/chat` para alinhar objetivos, ideias e desenvolvimento da equipa.
+- O Manager continua sem poder aprovar ou ativar novos agentes sozinho.
 
-Quando precisar de um novo agente, deve gerar uma solicitação com:
-- agente solicitado;
-- problema que resolve;
-- motivo pelo qual os agentes existentes não são suficientes;
-- benefício esperado;
-- riscos;
-- custo/complexidade;
-- permissões necessárias.
+## Controlo do Executor
 
-A solicitação fica `PENDING` até decisão do Owner.
+Na V0.3, a ativação exige `owner_id=owner-001`. Isto é **apenas um mecanismo de desenvolvimento**; não é autenticação de produção.
 
-Somente o Owner pode `APPROVE` ou `REJECT`.
+A ativação do Executor não liga nenhuma exchange e não executa ordens reais. O Executor continua sendo uma estação autorizável, pronta para uma futura camada de execução com limites e governance.
 
-## V0.2.0
+## Conversa com o Chefe
 
-Esta versão é uma base estrutural. Não executa ordens reais em corretoras e não contém chaves de API de exchanges.
+O chat é determinístico e local nesta versão. Ele não usa um LLM externo. O objetivo é criar a interface e o fluxo de alinhamento; uma próxima versão poderá ligar o Chefe/Advisor a um modelo com memória, ferramentas e contexto real do escritório.
 
-## Estrutura
+## Rotas
 
-- `app/` — API FastAPI
-- `app/agents/` — agentes
-- `app/services/` — registry, governance e auditoria
-- `app/db/` — SQLite
-- `tests/` — testes básicos
-- `.env.example` — configuração
-
-
-## Vercel
-
-The project is deployable as a FastAPI application on Vercel. After deployment, verify:
-
-- `/` — service status
+- `/` — estado do serviço
 - `/health` — health check
-- `/docs` — FastAPI interactive documentation
+- `/dashboard` — Agent Office
+- `/dashboard/state` — estado do escritório
+- `/office/chat` — conversa com o Chefe
+- `/agents` — agentes
+- `/docs` — documentação FastAPI
 
-No exchange credentials are required in this version. Real trading execution remains disabled.
+## Segurança
 
-
-## Dashboard
-
-A V0.2.0 inclui o Command Center em `/dashboard`, com a sala visual dos agentes, estados, atividade e Governance.
+Não colocar chaves de exchanges ou segredos reais no código. Antes de produção, substituir o `owner_id` de desenvolvimento por autenticação real, autorização por função, armazenamento seguro de segredos, auditoria e limites de execução.

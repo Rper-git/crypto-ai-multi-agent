@@ -1,17 +1,17 @@
-# Command Center — V0.2.0
+# Agent Office — V0.3.0
 
-A aplicação agora possui um painel visual em `/dashboard`.
+O `/dashboard` é o centro de comando visual do escritório.
 
-## O que aparece
+## Controlo do Owner
 
-- quantidade total de agentes registados;
-- agentes a trabalhar, em espera e bloqueados;
-- sala visual com um posto por agente;
-- atividade atual de cada agente;
-- feed de atividade;
-- estado de Governance;
-- links para API Docs, Health e pedidos de novos agentes.
+O Executor aparece como **BLOQUEADO** enquanto seu status for `DISABLED`. O cartão apresenta **Colocar a trabalhar**, que abre uma confirmação de Owner e chama `POST /agents/{agent_id}/activate`.
 
-## Importante
+Agentes ativos podem ser parados pelo Owner através de `POST /agents/{agent_id}/deactivate`.
 
-A animação de atividade da V0.2.0 é uma visualização de estado operacional. Ela não significa que um LLM esteja efetivamente a executar análise de mercado. A execução real será ligada nas próximas versões, mantendo o Executor bloqueado até existir autorização do Owner.
+> Na V0.3, `owner-001` é apenas uma credencial de desenvolvimento. Ainda não representa autenticação de produção.
+
+## Conversa com o Chefe
+
+A caixa "Conversa com o Chefe" permite ao Owner registrar expectativas, objetivos, ideias e perguntas sobre a equipa. O endpoint `/office/chat` mantém um pequeno histórico em memória e devolve respostas determinísticas.
+
+Na próxima fase, o Advisor poderá receber contexto real do escritório, relatórios do Manager, tarefas, métricas e memória persistente, além de um LLM autorizado.
