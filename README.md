@@ -1,4 +1,4 @@
-# Crypto AI Multi-Agent — V0.1.1
+# Crypto AI Multi-Agent — V0.2.0
 
 Sistema inicial de orquestração multi-agente para análise de trading.
 
@@ -19,7 +19,7 @@ A solicitação fica `PENDING` até decisão do Owner.
 
 Somente o Owner pode `APPROVE` ou `REJECT`.
 
-## V0.1.1
+## V0.2.0
 
 Esta versão é uma base estrutural. Não executa ordens reais em corretoras e não contém chaves de API de exchanges.
 
@@ -42,3 +42,8 @@ The project is deployable as a FastAPI application on Vercel. After deployment, 
 - `/docs` — FastAPI interactive documentation
 
 No exchange credentials are required in this version. Real trading execution remains disabled.
+
+
+## Dashboard
+
+A V0.2.0 inclui o Command Center em `/dashboard`, com a sala visual dos agentes, estados, atividade e Governance.
