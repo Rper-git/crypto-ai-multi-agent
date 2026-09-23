@@ -1,14 +1,19 @@
-# Crypto AI Multi-Agent Trading Office — V0.7.0
+# Crypto AI Multi-Agent Trading Office — V0.8.0
 
-Rebuild do Command Center com interface de trading office, ticker de mercado, escritório 32-bit, equipe, missões, relatórios, chat com Manager, governance e área preparada para corretora.
+Interface reconstruída no estilo **trading office pixel-art**, com Command Center funcional.
 
-## Estado desta versão
-- Dados públicos de mercado: Binance 24h ticker via backend.
-- Fallback local caso a API de mercado falhe.
-- Corretora: não conectada.
-- Trading LIVE: bloqueado.
-- Missões: teste de fluxo Manager → Scanner → Risk → Executor.
-- Executor: bloqueado por Governance.
+## Funcionalidades
+- Ticker de mercado via backend (Binance 24h → CoinGecko → fallback).
+- Escritório visual pixel-art com postos e estados reais dos agentes.
+- Controlo do Owner para trabalhar/pausar/bloquear agentes.
+- Executor com autorização separada para PAPER; LIVE permanece bloqueado.
+- Dashboard de patrimônio PAPER.
+- Simulador de BUY/SELL PAPER usando cotações públicas.
+- Missões Manager → Scanner → Risk → Executor PAPER.
+- Chat com Manager.
+- Relatórios e log de atividade.
+- Área de corretora preparada para futura ligação READ ONLY.
+- Nenhuma chave privada no frontend.
 
 ## Executar localmente
 ```bash
@@ -21,16 +26,7 @@ python run.py
 Abra `http://localhost:8000`.
 
 ## Vercel
-O projeto inclui `vercel.json` e usa `app/main.py` como função Python. Faça push para GitHub e importe o repositório na Vercel.
+O `vercel.json` usa `app/main.py` como função Python.
 
-## API
-- `/health`
-- `/api/market`
-- `/api/office`
-- `/api/portfolio`
-- `/api/reports`
-- `POST /api/chat`
-- `POST /api/missions`
-
-## Segurança
-Nunca coloque chaves da corretora no JavaScript. A futura integração deve guardar credenciais apenas no backend/variáveis de ambiente, começar em READ ONLY e usar permissões mínimas.
+## Limites de segurança
+Esta versão **não envia ordens reais** e não guarda credenciais de corretora. O simulador PAPER é isolado da corretora.
