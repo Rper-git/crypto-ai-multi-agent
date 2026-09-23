@@ -1,0 +1,7 @@
+[
+  "tests/test_api.py::test_binance_requires_auth_and_csrf",
+  "tests/test_api.py::test_login_and_csrf_protection",
+  "tests/test_api.py::test_paper_order_requires_csrf",
+  "tests/test_api.py::test_protected_endpoint_requires_auth",
+  "tests/test_api.py::test_public_health"
+]
