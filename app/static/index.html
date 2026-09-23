@@ -1,8 +1,35 @@
-<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crypto AI Trading Office</title><link rel="stylesheet" href="/static/style.css"></head><body>
-<div class="app">
-<header class="top"><div class="brand"><div class="logo">CA</div><div><div class="eyebrow">PRIVATE AI TRADING OFFICE</div><h1>Command Center</h1></div></div><div class="system"><span></span>SISTEMA ONLINE <small>READ ONLY</small></div></header>
-<div class="ticker" id="ticker"></div>
-<div class="layout">
-<aside class="sidebar"><div class="side-title">MENU</div><button class="nav active" data-view="dashboard">◈ Dashboard</button><button class="nav" data-view="market">◉ Mercado</button><button class="nav" data-view="portfolio">▣ Portfólio</button><button class="nav" data-view="team">♙ Equipe</button><button class="nav" data-view="missions">◆ Missões</button><button class="nav" data-view="reports">▤ Relatórios</button><button class="nav" data-view="broker">⌁ Corretora</button><button class="nav" data-view="chat">✦ Chefe / Chat</button><button class="nav" data-view="governance">◉ Governance</button><div class="sidebar-bottom"><div>OWNER</div><strong>Robson</strong><small>Controlo total do escritório</small></div></aside>
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crypto AI Trading Office — V0.9</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">CA</div><div><div class="eyebrow">PRIVATE AI TRADING OFFICE</div><div class="brand-name">CRYPTO AI <span>TRADING OFFICE</span></div></div></div>
+  <div id="topTicker" class="top-ticker"></div>
+  <div class="system-pill"><i></i><b>ONLINE</b><span>READ ONLY + PAPER</span></div>
+</header>
+<div class="body-grid">
+<aside class="sidebar">
+  <div class="owner-card"><div class="pixel-avatar">R</div><div><b>OWNER</b><small>Robson · controlo total</small></div><em>●</em></div>
+  <div class="menu-title">COMMAND CENTER</div>
+  <button class="nav active" data-view="dashboard">⌂ <span>Dashboard</span></button>
+  <button class="nav" data-view="market">⌁ <span>Mercado</span></button>
+  <button class="nav" data-view="portfolio">◫ <span>Portfólio</span></button>
+  <button class="nav" data-view="team">♙ <span>Equipe</span></button>
+  <button class="nav" data-view="missions">◎ <span>Missões</span></button>
+  <button class="nav" data-view="reports">▤ <span>Relatórios</span></button>
+  <button class="nav" data-view="broker">▣ <span>Corretora</span></button>
+  <button class="nav" data-view="chat">▰ <span>Chat / Chefe</span></button>
+  <button class="nav" data-view="governance">◇ <span>Governance</span></button>
+  <div class="sidebar-quote">“Capital pequeno.<br>Processo grande.”</div>
+</aside>
 <main id="content"></main>
-</div></div><script src="/static/app.js"></script></body></html>
+</div></div>
+<script src="/static/app.js"></script>
+</body></html>
