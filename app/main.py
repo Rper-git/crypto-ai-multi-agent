@@ -1,250 +1,279 @@
-from pathlib import Path
+
+import os, time, hmac, hashlib, secrets
+from collections import defaultdict, deque
 from typing import Optional
-import base64
-import hashlib
-import hmac
-import json
-import os
-import time
-import uuid
 import httpx
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-BASE = Path(__file__).resolve().parent
-VERSION = "0.9.0"
-app = FastAPI(title="Crypto AI Multi-Agent Trading Office", version=VERSION)
-app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
+app = FastAPI(title="Crypto AI Multi-Agent V1.1")
 
+ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "http://localhost:8000")
+LIVE_TRADING = os.getenv("LIVE_TRADING", "false").lower() == "true"
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[ALLOWED_ORIGIN],
+    allow_credentials=True,
+    allow_methods=["GET","POST","OPTIONS"],
+    allow_headers=["Content-Type","X-CSRF-Token"],
+)
+
+RATE = defaultdict(deque)
+SESSIONS = {}
+AUDIT = deque(maxlen=500)
 AGENTS = [
-    {"id":"agent-01","name":"Manager","role":"Orquestrador","mission":"Supervisionar a equipa e distribuir missões.","status":"working","activity":"A organizar o ciclo de análise.","skill":92,"desk":1},
-    {"id":"agent-02","name":"Market Scanner","role":"Analista de Mercado","mission":"Detetar movimentos, liquidez e oportunidades.","status":"working","activity":"A recolher cotações e movimentos.","skill":88,"desk":2},
-    {"id":"agent-03","name":"Risk","role":"Gestor de Risco","mission":"Controlar exposição, volatilidade e limites.","status":"working","activity":"A validar risco do cenário atual.","skill":95,"desk":3},
-    {"id":"agent-04","name":"Executor","role":"Trader Executor","mission":"Executar ordens apenas após aprovação do Owner.","status":"blocked","activity":"A aguardar autorização do Owner.","skill":86,"desk":4},
-    {"id":"agent-05","name":"CIO","role":"Estrategista-Chefe","mission":"Definir teses e alocação estratégica.","status":"vacancy","activity":"Vaga aberta.","skill":0,"desk":5},
-    {"id":"agent-06","name":"Fundamentalista","role":"Analista Fundamentalista","mission":"Avaliar qualidade financeira e valuation.","status":"vacancy","activity":"Vaga aberta.","skill":0,"desk":6},
-    {"id":"agent-07","name":"Sentimento","role":"Analista de Sentimento","mission":"Monitorizar notícias e sentimento.","status":"vacancy","activity":"Vaga aberta.","skill":0,"desk":7},
-    {"id":"agent-08","name":"Liquidez","role":"Liquidez & Colateral","mission":"Controlar caixa, margem e colateral.","status":"vacancy","activity":"Vaga aberta.","skill":0,"desk":8},
-    {"id":"agent-09","name":"Compliance","role":"Auditor de Compliance","mission":"Garantir regras e rastreabilidade.","status":"vacancy","activity":"Vaga aberta.","skill":0,"desk":9},
-    {"id":"agent-10","name":"Arbitragem","role":"Especialista em Arbitragem","mission":"Pesquisar diferenças de preço após custos.","status":"vacancy","activity":"Vaga aberta.","skill":0,"desk":10},
+    {"id":"manager","name":"Manager","status":"working","role":"Orquestrador"},
+    {"id":"scanner","name":"Market Scanner","status":"working","role":"Pesquisa de Mercado"},
+    {"id":"risk","name":"Risk Manager","status":"working","role":"Gestão de Risco"},
+    {"id":"executor","name":"Executor","status":"blocked","role":"Execução"},
+    {"id":"cio","name":"CIO","status":"vacancy","role":"Estratégia"},
+    {"id":"fundamental","name":"Fundamentalista","status":"vacancy","role":"Fundamentos"},
+    {"id":"sentiment","name":"Sentimento","status":"vacancy","role":"Sentimento"},
+    {"id":"liquidity","name":"Liquidez","status":"vacancy","role":"Liquidez"},
+    {"id":"compliance","name":"Compliance","status":"vacancy","role":"Conformidade"},
+    {"id":"arbitrage","name":"Arbitragem","status":"vacancy","role":"Arbitragem"},
 ]
+CSRF = {}
 
-FALLBACK = {
-    "BTCUSDT":{"symbol":"BTC","price":104235.0,"change":2.31,"volume":0},
-    "ETHUSDT":{"symbol":"ETH","price":3842.0,"change":-0.82,"volume":0},
-    "SOLUSDT":{"symbol":"SOL","price":241.0,"change":4.18,"volume":0},
-    "XRPUSDT":{"symbol":"XRP","price":2.91,"change":1.73,"volume":0},
-    "BNBUSDT":{"symbol":"BNB","price":651.0,"change":-0.34,"volume":0},
-    "ADAUSDT":{"symbol":"ADA","price":0.82,"change":0.91,"volume":0},
-}
+def env(name, default=""):
+    return os.getenv(name, default)
 
-activity_log = [
-    {"id":"a1","agent":"Manager","text":"Escritório iniciado. A coordenar o ciclo de análise.","kind":"system","timestamp":int(time.time())},
-    {"id":"a2","agent":"Market Scanner","text":"A recolher cotações públicas em tempo real.","kind":"market","timestamp":int(time.time())},
-    {"id":"a3","agent":"Risk","text":"A validar exposição antes de qualquer ordem.","kind":"risk","timestamp":int(time.time())},
-    {"id":"a4","agent":"Executor","text":"Execução real protegida por Governance.","kind":"blocked","timestamp":int(time.time())},
-]
-paper = {"cash": 1250.0, "positions": [], "realized": 0.0}
-
-async def fetch_market():
-    symbols = list(FALLBACK)
+def verify_password(password: str) -> bool:
+    stored = env("OWNER_PASSWORD_HASH")
     try:
-        async with httpx.AsyncClient(timeout=6) as client:
-            r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbols": json.dumps(symbols)})
-            r.raise_for_status()
-            rows = r.json()
-        out=[]
-        for row in rows:
-            key=row["symbol"]
-            if key in FALLBACK:
-                out.append({"symbol":FALLBACK[key]["symbol"],"price":float(row["lastPrice"]),"change":float(row["priceChangePercent"]),"volume":float(row["quoteVolume"]),"source":"Binance"})
-        if out:
-            return sorted(out, key=lambda x: ["BTC","ETH","SOL","XRP","BNB","ADA"].index(x["symbol"]))
+        alg, iters, salt_hex, digest_hex = stored.split("$")
+        if alg != "pbkdf2_sha256":
+            return False
+        got = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt_hex), int(iters))
+        return hmac.compare_digest(got.hex(), digest_hex)
     except Exception:
-        pass
-    try:
-        ids = "bitcoin,ethereum,solana,ripple,binancecoin,cardano"
-        async with httpx.AsyncClient(timeout=6) as client:
-            r = await client.get("https://api.coingecko.com/api/v3/simple/price", params={"ids":ids,"vs_currencies":"usd","include_24hr_change":"true"})
-            r.raise_for_status(); data=r.json()
-        mapping={"bitcoin":"BTC","ethereum":"ETH","solana":"SOL","ripple":"XRP","binancecoin":"BNB","cardano":"ADA"}
-        return [{"symbol":s,"price":float(data[k]["usd"]),"change":float(data[k].get("usd_24h_change",0)),"volume":0,"source":"CoinGecko"} for k,s in mapping.items() if k in data]
-    except Exception:
-        return [{**v,"source":"fallback"} for v in FALLBACK.values()]
+        return False
 
-def log(agent, text, kind="info"):
-    activity_log.insert(0,{"id":uuid.uuid4().hex[:8],"agent":agent,"text":text,"kind":kind,"timestamp":int(time.time())})
-    del activity_log[80:]
+def rate_limit(key: str, limit=30, window=60):
+    now = time.time()
+    q = RATE[key]
+    while q and now - q[0] > window:
+        q.popleft()
+    if len(q) >= limit:
+        raise HTTPException(429, "Too many requests")
+    q.append(now)
 
-@app.get("/")
-def root(): return FileResponse(BASE / "static" / "index.html")
+def audit(event, request: Request, detail=""):
+    AUDIT.append({
+        "ts": int(time.time()),
+        "event": event,
+        "ip": request.client.host if request.client else "unknown",
+        "detail": detail[:500]
+    })
 
-@app.get("/health")
-def health():
-    return {"status":"online","version":VERSION,"mode":"READ_ONLY + PAPER","live_trading":False,"openai_configured":bool(os.getenv("OPENAI_API_KEY")),"timestamp":int(time.time())}
+def issue_session(email: str):
+    sid = secrets.token_urlsafe(32)
+    csrf = secrets.token_urlsafe(32)
+    SESSIONS[sid] = {"email": email, "created": time.time(), "expires": time.time()+8*3600, "revoked": False, "csrf": csrf}
+    return sid, csrf
 
-@app.get("/api/market")
-async def market(): return {"updated_at":int(time.time()),"assets":await fetch_market()}
+def current_session(request: Request):
+    sid = request.cookies.get("owner_session")
+    if not sid or sid not in SESSIONS:
+        raise HTTPException(401, "Authentication required")
+    s = SESSIONS[sid]
+    if s["revoked"] or s["expires"] < time.time():
+        SESSIONS.pop(sid, None)
+        raise HTTPException(401, "Session expired")
+    return sid, s
 
-@app.get("/api/office")
-def office(): return {"agents":AGENTS,"mode":"READ_ONLY + PAPER","live_trading":False,"updated_at":int(time.time())}
+def owner(request: Request):
+    sid, s = current_session(request)
+    return sid, s
 
-@app.get("/api/activity")
-def activity(): return {"items":activity_log[:50]}
+def protected_post(request: Request):
+    sid, s = owner(request)
+    supplied = request.headers.get("X-CSRF-Token","")
+    if not supplied or not hmac.compare_digest(supplied, s["csrf"]):
+        audit("csrf_rejected", request)
+        raise HTTPException(403, "CSRF validation failed")
+    return sid, s
 
-@app.get("/api/portfolio")
-async def portfolio():
-    assets = await fetch_market(); prices={a["symbol"]:a["price"] for a in assets}
-    value=paper["cash"]; positions=[]
-    for p in paper["positions"]:
-        current=prices.get(p["symbol"],p["avg_price"]); market_value=p["qty"]*current; pnl=(current-p["avg_price"])*p["qty"]
-        positions.append({**p,"current":current,"market_value":market_value,"pnl":pnl}); value += market_value
-    invested = 1250.0-paper["cash"]+sum(p["qty"]*p["avg_price"] for p in paper["positions"])
-    pnl=value-1250.0
-    return {"connected":False,"broker":"Modo PAPER","currency":"EUR","invested":round(max(invested,0),2),"value":round(value,2),"pnl":round(pnl,2),"pnl_pct":round(pnl/1250*100,2),"cash":round(paper["cash"],2),"positions":positions,"mode":"PAPER"}
+class Login(BaseModel):
+    email: str
+    password: str = Field(min_length=8, max_length=200)
 
-@app.get("/api/reports")
-def reports():
-    return [
-        {"id":"RPT-001","title":"Estado operacional","status":"OK","summary":"Manager, Scanner e Risk ativos; Executor protegido por Governance."},
-        {"id":"RPT-002","title":"Mercado","status":"LIVE DATA","summary":"Ticker público com fallback automático."},
-        {"id":"RPT-003","title":"Execução","status":"PAPER ONLY","summary":"O fluxo de investimento é simulado até a conexão e aprovação do Owner."},
-        {"id":"RPT-004","title":"IA","status":"READY" if os.getenv("OPENAI_API_KEY") else "CONFIGURAR","summary":"O Chat pode usar OpenAI no backend sem expor a chave ao navegador."},
-    ]
-
-class ChatRequest(BaseModel): message: str = Field(min_length=1, max_length=4000)
-
-async def openai_chat(message: str):
-    key=os.getenv("OPENAI_API_KEY")
-    if not key: return None
-    model=os.getenv("OPENAI_MODEL","gpt-5")
-    system=("És o Manager de um escritório privado de análise de criptoativos. "
-            "Coordena Scanner, Risk, CIO e Executor. Dá análise factual, explica riscos, "
-            "não prometas lucros e nunca assumes que uma ordem real foi executada. "
-            "Quando faltarem dados, pede-os. Responde em português de Portugal, de forma concisa.")
-    payload={"model":model,"input":[{"role":"system","content":[{"type":"input_text","text":system}]},{"role":"user","content":[{"type":"input_text","text":message}]}]}
-    async with httpx.AsyncClient(timeout=25) as client:
-        r=await client.post("https://api.openai.com/v1/responses",headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},json=payload)
-        r.raise_for_status(); data=r.json()
-    text=data.get("output_text")
-    if text: return text
-    chunks=[]
-    for item in data.get("output",[]):
-        for c in item.get("content",[]):
-            if isinstance(c,dict) and c.get("text"): chunks.append(c["text"])
-    return "\n".join(chunks) or "Não foi possível obter resposta do modelo."
-
-@app.post("/api/chat")
-async def chat(req: ChatRequest):
-    log("Manager",f"Recebeu: {req.message}","chat")
-    try:
-        ai=await openai_chat(req.message)
-        if ai:
-            log("Manager","Resposta produzida por OpenAI.","ai")
-            return {"speaker":"Manager / OpenAI","reply":ai,"provider":"OpenAI","timestamp":int(time.time())}
-    except Exception as exc:
-        log("Manager",f"OpenAI indisponível; fallback local ({type(exc).__name__}).","warning")
-    msg=req.message.lower()
-    if "mercado" in msg or "cotação" in msg or "cotacoes" in msg:
-        reply="Vou alinhar Scanner + Risk. Os preços vêm de dados públicos; a análise não significa recomendação nem execução automática."
-    elif "risco" in msg:
-        reply="O Risk deve validar exposição, liquidez e limites antes de qualquer operação. O ambiente atual continua PAPER."
-    elif "equipe" in msg or "equipa" in msg:
-        reply="Existem 4 funções preenchidas e 6 vagas. O Owner mantém a decisão final sobre novas contratações e permissões."
-    elif "executor" in msg:
-        reply="O Executor está preparado para PAPER, mas ordens reais continuam desativadas nesta versão."
-    else:
-        reply="Mensagem recebida. Posso coordenar mercado, risco, equipa e simulações PAPER. Configure OPENAI_API_KEY para ligar o Chat ao modelo."
-    return {"speaker":"Manager","reply":reply,"provider":"local","timestamp":int(time.time())}
-
-class MissionRequest(BaseModel):
-    objective: str = Field(min_length=2, max_length=500)
-    capital: float = Field(default=0, ge=0, le=1_000_000)
-
-@app.post("/api/missions")
-def mission(req: MissionRequest):
-    cap=max(0,float(req.capital)); risk_limit=round(cap*0.01,2)
-    log("Manager",f"Nova missão: {req.objective}","mission"); log("Market Scanner","Mercado consultado.","market"); log("Risk",f"Limite de risco de teste: €{risk_limit:.2f}.","risk")
-    return {"status":"completed","objective":req.objective,"capital":cap,"steps":[{"agent":"Manager","status":"completed","message":"Missão recebida e distribuída."},{"agent":"Market Scanner","status":"completed","message":"Mercado consultado."},{"agent":"Risk","status":"completed","message":f"Limite de risco de teste: €{risk_limit:.2f}."},{"agent":"Executor","status":"blocked","message":"LIVE permanece bloqueado; o fluxo PAPER está disponível."}],"decision":"PAPER_ONLY","timestamp":int(time.time())}
-
-class AgentAction(BaseModel):
+class Action(BaseModel):
     agent_id: str
     action: str
 
-@app.post("/api/agents/action")
-def agent_action(req: AgentAction):
-    allowed={"start","pause","block","authorize_paper"}
-    if req.action not in allowed: return {"ok":False,"message":"Ação inválida."}
-    agent=next((a for a in AGENTS if a["id"]==req.agent_id),None)
-    if not agent: return {"ok":False,"message":"Agente não encontrado."}
-    if agent["status"]=="vacancy": return {"ok":False,"message":"Esta posição ainda é uma vaga."}
-    if req.action=="start": agent["status"]="working"; agent["activity"]="A trabalhar sob controlo do Owner."; log(agent["name"],"Agente colocado a trabalhar pelo Owner.","control")
-    elif req.action=="pause": agent["status"]="idle"; agent["activity"]="Em espera por nova missão."; log(agent["name"],"Agente colocado em espera.","control")
-    elif req.action=="block": agent["status"]="blocked"; agent["activity"]="Bloqueado pelo Owner/Governance."; log(agent["name"],"Agente bloqueado pelo Owner.","blocked")
-    elif req.action=="authorize_paper":
-        if agent["name"]!="Executor": return {"ok":False,"message":"A autorização PAPER só se aplica ao Executor."}
-        agent["status"]="working"; agent["activity"]="PAPER autorizado. LIVE continua bloqueado."; log("Executor","PAPER autorizado pelo Owner; LIVE continua bloqueado.","control")
-    return {"ok":True,"agent":agent}
+class Mission(BaseModel):
+    objective: str = Field(min_length=3, max_length=1000)
 
-class PaperOrder(BaseModel):
-    symbol: str
-    side: str
-    qty: float = Field(gt=0)
-    price: Optional[float] = Field(default=None, gt=0)
+class Chat(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
 
-@app.post("/api/paper/order")
-async def paper_order(req: PaperOrder):
-    symbol=req.symbol.upper(); side=req.side.lower(); qty=float(req.qty); assets=await fetch_market(); found=next((a for a in assets if a["symbol"]==symbol),None)
-    if not found: return {"ok":False,"message":"Ativo não disponível no ticker."}
-    price=float(req.price or found["price"]); cost=qty*price
-    if side=="buy":
-        if paper["cash"]<cost: return {"ok":False,"message":"Saldo PAPER insuficiente."}
-        paper["cash"]-=cost; existing=next((p for p in paper["positions"] if p["symbol"]==symbol),None)
-        if existing:
-            total_qty=existing["qty"]+qty; existing["avg_price"]=(existing["qty"]*existing["avg_price"]+cost)/total_qty; existing["qty"]=total_qty
-        else: paper["positions"].append({"symbol":symbol,"qty":qty,"avg_price":price})
-        log("Executor",f"PAPER BUY {qty:g} {symbol} a {price:g}.","paper")
-    elif side=="sell":
-        existing=next((p for p in paper["positions"] if p["symbol"]==symbol),None)
-        if not existing or existing["qty"]<qty: return {"ok":False,"message":"Posição PAPER insuficiente."}
-        paper["cash"]+=cost; paper["realized"]+=(price-existing["avg_price"])*qty; existing["qty"]-=qty
-        if existing["qty"]<=1e-12: paper["positions"].remove(existing)
-        log("Executor",f"PAPER SELL {qty:g} {symbol} a {price:g}.","paper")
-    else: return {"ok":False,"message":"Side deve ser buy ou sell."}
-    return {"ok":True,"mode":"PAPER","symbol":symbol,"side":side,"qty":qty,"price":price,"timestamp":int(time.time())}
+class BrokerConnect(BaseModel):
+    api_key: str = Field(min_length=8, max_length=256)
+    api_secret: str = Field(min_length=8, max_length=256)
 
-# ---- Broker connection: Binance READ-ONLY session test ----
-class BinanceConnectRequest(BaseModel):
-    api_key: str = Field(min_length=8, max_length=300)
-    api_secret: str = Field(min_length=8, max_length=300)
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    return response
 
+@app.get("/health")
+def health():
+    return {"ok": True, "live_trading": False, "version":"1.1"}
 
-def binance_signature(secret: str, query: str) -> str:
-    return hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+@app.get("/login", response_class=HTMLResponse)
+def login_page():
+    return """<!doctype html><html><head><meta charset=utf-8><title>Owner Login</title>
+<style>body{background:#0b1020;color:#fff;font-family:Arial;display:grid;place-items:center;height:100vh}
+.card{width:360px;background:#141b30;padding:28px;border-radius:16px}input,button{width:100%;padding:12px;margin:8px 0;box-sizing:border-box}
+button{background:#37d67a;border:0;font-weight:700;cursor:pointer}</style></head>
+<body><div class=card><h2>Crypto AI Office</h2><p>Owner Access</p>
+<form id=f><input id=e type=email placeholder="Email" required><input id=p type=password placeholder="Password" required>
+<button>Entrar</button></form><pre id=o></pre></div>
+<script>
+f.onsubmit=async(e)=>{e.preventDefault();let r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,password:p.value})});
+o.textContent=r.ok?'Login efetuado. Abra /dashboard':'Login inválido';if(r.ok)location='/dashboard'}
+</script></body></html>"""
 
-@app.post("/api/broker/binance/connect")
-async def connect_binance(req: BinanceConnectRequest):
-    # Credentials are used only for this request and are NOT persisted in the application.
-    timestamp=int(time.time()*1000); recv_window=5000
-    query=f"recvWindow={recv_window}&timestamp={timestamp}"
-    signature=binance_signature(req.api_secret, query)
-    headers={"X-MBX-APIKEY":req.api_key}
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r=await client.get("https://api.binance.com/api/v3/account",params={"recvWindow":recv_window,"timestamp":timestamp,"signature":signature},headers=headers)
-        if r.status_code != 200:
-            return {"ok":False,"connected":False,"message":"A Binance rejeitou as credenciais ou a chave não tem permissão de leitura.","status_code":r.status_code}
-        data=r.json(); balances=[]
-        for b in data.get("balances",[]):
-            free=float(b.get("free",0)); locked=float(b.get("locked",0))
-            if free or locked: balances.append({"asset":b["asset"],"free":free,"locked":locked})
-        log("Manager","Conta Binance validada em READ ONLY.","broker")
-        return {"ok":True,"connected":True,"broker":"Binance","account_type":data.get("accountType"),"can_trade":bool(data.get("canTrade")),"balances":balances[:80],"message":"Conta validada. As credenciais não foram guardadas."}
-    except Exception as exc:
-        return {"ok":False,"connected":False,"message":f"Falha de ligação: {type(exc).__name__}."}
+        _, s = current_session(request)
+    except HTTPException:
+        return HTMLResponse("<script>location='/login'</script>")
+    return """<!doctype html><html><head><meta charset=utf-8><title>Trading Office</title>
+<style>
+body{margin:0;background:#07111f;color:#eaf2ff;font-family:Arial}
+header{padding:14px 22px;border-bottom:1px solid #20304a;display:flex;justify-content:space-between}
+main{display:grid;grid-template-columns:1fr 360px;gap:16px;padding:16px}
+.office{background:#101c2e;border:1px solid #2b4162;border-radius:18px;padding:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.desk{background:#16253a;border:1px solid #355273;border-radius:12px;padding:15px;min-height:100px}
+.working{box-shadow:inset 0 0 0 1px #2ed67a}.blocked{box-shadow:inset 0 0 0 1px #e6a93a}
+.side{display:grid;gap:16px}.panel{background:#101c2e;border:1px solid #2b4162;border-radius:18px;padding:16px}
+button{background:#2ed67a;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+small{color:#8fa6c4}
+</style></head><body><header><b>CRYPTO AI TRADING OFFICE V1.1</b><button onclick="logout()">Sair</button></header>
+<main><section class=office><h2>Escritório</h2><div id=agents class=grid></div></section>
+<section class=side><div class=panel><h3>Segurança</h3><p>Owner autenticado</p><p>LIVE TRADING: <b>DESATIVADO</b></p></div>
+<div class=panel><h3>Auditoria</h3><pre id=logs></pre></div></section></main>
+<script>
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+async function load(){let r=await fetch('/api/office');if(r.status===401)return location='/login';let d=await r.json();
+agents.innerHTML=d.agents.map(a=>`<div class="desk ${esc(a.status)}"><b>${esc(a.name)}</b><br><small>${esc(a.role)}</small><p>${esc(a.status)}</p></div>`).join('');
+let l=await fetch('/api/audit');logs.textContent=JSON.stringify((await l.json()).items,null,2)}
+async function logout(){await fetch('/api/logout',{method:'POST',headers:{'X-CSRF-Token':window.csrf||''}});location='/login'} load();
+</script></body></html>"""
 
-@app.get("/api/broker/status")
-def broker_status():
-    return {"connected":False,"broker":None,"mode":"READ_ONLY SESSION","message":"Nenhuma sessão de corretora ativa neste pedido. Ligue uma conta para validar saldo e permissões."}
+@app.post("/api/login")
+def login(data: Login, request: Request, response: Response):
+    rate_limit("login:"+ (request.client.host if request.client else "unknown"), 8, 300)
+    if not hmac.compare_digest(data.email.lower(), env("OWNER_EMAIL").lower()) or not verify_password(data.password):
+        audit("login_failed", request)
+        raise HTTPException(401, "Invalid credentials")
+    sid, csrf = issue_session(data.email.lower())
+    response.set_cookie("owner_session", sid, httponly=True, secure=request.url.scheme=="https",
+                        samesite="strict", max_age=8*3600, path="/")
+    audit("login_success", request)
+    return {"ok":True,"csrf":csrf}
+
+@app.post("/api/logout")
+def logout(request: Request, response: Response):
+    sid, s = current_session(request)
+    token = request.headers.get("X-CSRF-Token","")
+    if not hmac.compare_digest(token, s["csrf"]):
+        raise HTTPException(403, "CSRF validation failed")
+    SESSIONS[sid]["revoked"]=True
+    response.delete_cookie("owner_session", path="/")
+    audit("logout", request)
+    return {"ok":True}
+
+@app.get("/api/session")
+def session(request: Request):
+    _, s = owner(request)
+    return {"email":s["email"],"expires":int(s["expires"]),"csrf":s["csrf"]}
+
+@app.get("/api/office")
+def office(request: Request):
+    owner(request)
+    return {"agents":AGENTS,"live_trading":False}
+
+@app.post("/api/agents/action")
+def agent_action(data: Action, request: Request):
+    sid,s=protected_post(request); rate_limit("action:"+s["email"],60,60)
+    if data.action not in {"start","pause","block"}:
+        raise HTTPException(400,"Invalid action")
+    for a in AGENTS:
+        if a["id"]==data.agent_id:
+            a["status"]={"start":"working","pause":"paused","block":"blocked"}[data.action]
+            audit("agent_action",request,f"{data.agent_id}:{data.action}")
+            return {"ok":True,"agent":a}
+    raise HTTPException(404,"Agent not found")
+
+@app.post("/api/missions")
+def mission(data: Mission, request: Request):
+    sid,s=protected_post(request); rate_limit("mission:"+s["email"],20,60)
+    audit("mission_created",request,data.objective)
+    return {"ok":True,"status":"queued","objective":data.objective}
+
+@app.post("/api/chat")
+async def chat(data: Chat, request: Request):
+    sid,s=protected_post(request); rate_limit("chat:"+s["email"],20,60)
+    key=env("OPENAI_API_KEY")
+    if not key:
+        return {"ok":True,"mode":"local","reply":"OpenAI ainda não está configurada. O Manager recebeu a mensagem em modo local."}
+    model=env("OPENAI_MODEL","gpt-5")
+    headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"}
+    payload={"model":model,"input":[{"role":"system","content":"You are the Manager of a controlled crypto investment office. Do not execute trades. Explain risks and require Owner approval for privileged actions."},{"role":"user","content":data.message}]}
+    async with httpx.AsyncClient(timeout=30) as client:
+        r=await client.post("https://api.openai.com/v1/responses",headers=headers,json=payload)
+    if r.status_code>=400:
+        audit("openai_error",request,str(r.status_code))
+        raise HTTPException(502,"AI provider error")
+    j=r.json()
+    audit("chat",request,"OpenAI request")
+    return {"ok":True,"mode":"openai","reply":j.get("output_text","")}
+
+@app.post("/api/broker/binance/read-only")
+async def binance_read_only(data: BrokerConnect, request: Request):
+    sid,s=protected_post(request); rate_limit("binance:"+s["email"],10,300)
+    # Never persist the supplied secret.
+    import urllib.parse
+    ts=int(time.time()*1000)
+    query=f"timestamp={ts}"
+    signature=hmac.new(data.api_secret.encode(),query.encode(),hashlib.sha256).hexdigest()
+    url="https://api.binance.com/api/v3/account?"+query+"&signature="+signature
+    headers={"X-MBX-APIKEY":data.api_key}
+    async with httpx.AsyncClient(timeout=15) as client:
+        r=await client.get(url,headers=headers)
+    if r.status_code>=400:
+        audit("binance_read_only_failed",request,"provider rejected credentials")
+        raise HTTPException(400,"Binance rejected the credentials or permissions")
+    j=r.json()
+    if j.get("canTrade"):
+        audit("binance_permission_warning",request,"API key can trade; connection remains READ ONLY")
+    audit("binance_read_only_success",request,"credentials not persisted")
+    balances=[b for b in j.get("balances",[]) if float(b.get("free","0")) or float(b.get("locked","0"))]
+    return {"ok":True,"mode":"READ_ONLY","can_trade":bool(j.get("canTrade")),"can_withdraw":bool(j.get("canWithdraw")),"balances":balances}
+
+@app.get("/api/audit")
+def audit_view(request: Request):
+    owner(request)
+    return {"items":list(AUDIT)[-100:]}
+
+@app.post("/api/live/order")
+def live_order_blocked(request: Request):
+    protected_post(request)
+    raise HTTPException(403,"LIVE trading is disabled in V1.1")
+
+@app.get("/")
+def root():
+    return HTMLResponse("<script>location='/login'</script>")

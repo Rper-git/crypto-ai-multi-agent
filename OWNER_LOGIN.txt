@@ -1,0 +1,12 @@
+CRYPTO AI MULTI-AGENT V1.1
+Bootstrap Owner Login
+
+URL: /login
+Email: owner@cryptooffice.local
+Password: C0mmander!2026
+
+IMPORTANT:
+- Change this password immediately after first login.
+- Do not reuse it elsewhere.
+- Do not commit .env or real API keys to GitHub.
+- Binance remains READ ONLY and LIVE trading is disabled.
