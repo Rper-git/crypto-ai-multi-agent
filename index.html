@@ -1,35 +1,130 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Crypto AI Trading Office — V0.9</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Crypto AI Multi-Agent — Command Center</title>
+  <style>
+    :root{--bg:#050a12;--panel:#0b1421;--panel2:#0e1a2a;--line:#1c3047;--text:#e8f0fa;--muted:#8194aa;--cyan:#55d6ff;--green:#25e08b;--red:#ff5570;--yellow:#f4c95d}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -20%,#12233a 0,#050a12 45%);color:var(--text);font:14px Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+    button,input{font:inherit}.hidden{display:none!important}
+    #login{min-height:100vh;display:grid;place-items:center;padding:20px}
+    .login-card{width:min(420px,100%);background:rgba(11,20,33,.96);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 20px 70px #0008}
+    .brand{letter-spacing:.18em;color:var(--cyan);font-size:11px;font-weight:800}.login-card h1{margin:8px 0 4px;font-size:28px}.login-card p{color:var(--muted)}
+    label{display:block;color:#a9bad0;font-size:12px;margin:16px 0 7px}input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:10px;background:#07101b;color:#fff;outline:none}input:focus{border-color:var(--cyan)}
+    .btn{border:1px solid #29435e;background:#10243a;color:#dcecff;padding:10px 14px;border-radius:9px;cursor:pointer}.btn:hover{border-color:var(--cyan)}.btn.primary{background:#0d6d86;border-color:#35c8ed;color:white}.btn.danger{background:#401421;border-color:#7c2738;color:#ff9aaa}.btn.success{background:#0b3b2b;border-color:#1b8c61;color:#77f0bb}
+    .login-error{color:#ff8094;min-height:20px;margin-top:10px}.hint{font-size:11px;color:#637890;margin-top:15px}
+    #app{min-height:100vh}.top{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:20px;background:#060d16e8;position:sticky;top:0;z-index:10}.top .title{font-weight:800;font-size:19px}.status{margin-left:auto;display:flex;gap:8px;align-items:center;color:#8ff2c5;font-size:11px;border:1px solid #19563f;padding:8px 11px;border-radius:999px}.dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 12px var(--green)}
+    .layout{display:grid;grid-template-columns:205px 1fr;min-height:calc(100vh - 68px)}.side{border-right:1px solid var(--line);padding:18px 10px}.side small{color:#5e7690;letter-spacing:.16em;margin:0 10px 10px;display:block}.nav{width:100%;text-align:left;background:none;border:0;color:#a8b9cc;padding:11px 12px;border-radius:9px;cursor:pointer;margin:2px 0}.nav:hover,.nav.active{background:#12243a;color:#fff;border-left:2px solid var(--cyan)}.content{padding:25px;max-width:1500px;width:100%;margin:auto}.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.page-head h2{margin:0 0 5px;font-size:26px}.muted{color:var(--muted)}
+    .ticker{height:40px;border-bottom:1px solid var(--line);display:flex;gap:28px;align-items:center;padding:0 20px;overflow:auto;white-space:nowrap;background:#07101a}.ticker b{font-size:12px}.up{color:var(--green)}.down{color:var(--red)}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:linear-gradient(145deg,#0d1827,#09121e);border:1px solid var(--line);border-radius:13px;padding:16px}.stat-label{color:#7190ad;text-transform:uppercase;font-size:10px;letter-spacing:.1em}.stat-value{font-size:27px;font-weight:800;margin-top:8px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px}.office{min-height:480px;background-image:linear-gradient(#10223655 1px,transparent 1px),linear-gradient(90deg,#10223655 1px,transparent 1px);background-size:28px 28px;background-color:#08111c}.office-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.desks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.agent{position:relative;border:1px solid #20374f;border-radius:13px;background:linear-gradient(150deg,#101e2e,#07111c);padding:15px;min-height:155px}.agent .badge{position:absolute;right:12px;top:12px;font-size:9px;padding:5px 8px;border-radius:999px;background:#073d2a;color:#77efbb}.agent.blocked .badge{background:#481521;color:#ff8ea0}.agent .avatar{width:36px;height:36px;border:1px solid #31526e;border-radius:9px;display:grid;place-items:center;color:var(--cyan);font-weight:800;margin-bottom:10px}.agent h3{margin:0 0 3px}.role{font-size:11px;color:#6f91ad}.mission{margin:10px 0;color:#b5c7d9;font-size:12px}.bar{height:5px;background:#17283a;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--cyan);width:70%}.agent.blocked .bar i{background:var(--red)}.actions{display:flex;gap:7px;margin-top:12px}
+    .right{display:flex;flex-direction:column;gap:14px}.money{display:grid;grid-template-columns:1fr 1fr;gap:12px}.money strong{font-size:23px}.feed{max-height:280px;overflow:auto}.event{padding:11px 0;border-bottom:1px solid #16283a}.event b{display:block}.event span{color:#6f879e;font-size:11px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px}.panel h3{margin:0 0 12px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #17283a}.row:last-child{border:0}.tag{font-size:10px;padding:5px 7px;border-radius:7px;background:#14283d;color:#8db4d5}
+    .view{display:none}.view.active{display:block}.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:11px;border-bottom:1px solid #17283a}.table th{font-size:10px;color:#7089a3;text-transform:uppercase}.modal{position:fixed;inset:0;background:#0009;display:grid;place-items:center;z-index:30}.modal-card{width:min(700px,calc(100% - 30px));background:#0b1522;border:1px solid #29415b;border-radius:15px;padding:18px}.chat{height:280px;overflow:auto;background:#07101a;border:1px solid var(--line);border-radius:10px;padding:12px}.msg{padding:9px 10px;border-radius:9px;margin:7px 0;max-width:85%}.msg.me{margin-left:auto;background:#103149}.msg.bot{background:#111f2d}.chat-row{display:flex;gap:8px;margin-top:9px}.chat-row input{flex:1}
+    @media(max-width:1000px){.layout{grid-template-columns:1fr}.side{display:flex;overflow:auto;border-right:0;border-bottom:1px solid var(--line)}.side small{display:none}.nav{white-space:nowrap}.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.desks{grid-template-columns:1fr}}@media(max-width:600px){.content{padding:14px}.stats{grid-template-columns:1fr 1fr}.top{padding:0 13px}.title{font-size:15px!important}.desks{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-<div class="app-shell">
-<header class="topbar">
-  <div class="brand"><div class="brand-mark">CA</div><div><div class="eyebrow">PRIVATE AI TRADING OFFICE</div><div class="brand-name">CRYPTO AI <span>TRADING OFFICE</span></div></div></div>
-  <div id="topTicker" class="top-ticker"></div>
-  <div class="system-pill"><i></i><b>ONLINE</b><span>READ ONLY + PAPER</span></div>
-</header>
-<div class="body-grid">
-<aside class="sidebar">
-  <div class="owner-card"><div class="pixel-avatar">R</div><div><b>OWNER</b><small>Robson · sessão protegida</small></div><button class="logout-btn" onclick="logout()">SAIR</button></div>
-  <div class="menu-title">COMMAND CENTER</div>
-  <button class="nav active" data-view="dashboard">⌂ <span>Dashboard</span></button>
-  <button class="nav" data-view="market">⌁ <span>Mercado</span></button>
-  <button class="nav" data-view="portfolio">◫ <span>Portfólio</span></button>
-  <button class="nav" data-view="team">♙ <span>Equipe</span></button>
-  <button class="nav" data-view="missions">◎ <span>Missões</span></button>
-  <button class="nav" data-view="reports">▤ <span>Relatórios</span></button>
-  <button class="nav" data-view="broker">▣ <span>Corretora</span></button>
-  <button class="nav" data-view="chat">▰ <span>Chat / Chefe</span></button>
-  <button class="nav" data-view="governance">◇ <span>Governance</span></button>
-  <div class="sidebar-quote">“Capital pequeno.<br>Processo grande.”</div>
-</aside>
-<main id="content"></main>
-</div></div>
-<script src="/static/app.js"></script>
-</body></html>
+<div id="login">
+  <form class="login-card" id="loginForm">
+    <div class="brand">PRIVATE AI TRADING OFFICE</div>
+    <h1>Command Center</h1><p>Acesso do Owner</p>
+    <label>Utilizador</label><input id="user" autocomplete="username" required>
+    <label>Palavra-passe</label><input id="pass" type="password" autocomplete="current-password" required>
+    <button class="btn primary" style="width:100%;margin-top:18px">Entrar</button>
+    <div id="loginError" class="login-error"></div>
+    <div class="hint">O sistema inicia em modo seguro / read-only. Operações reais exigem autorização explícita.</div>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div><div class="brand">PRIVATE AI TRADING OFFICE</div><div class="title">Command Center</div></div>
+    <div id="topStatus" class="status"><i class="dot"></i>SISTEMA ONLINE</div>
+    <button class="btn" onclick="logout()">Sair</button>
+  </header>
+  <div id="ticker" class="ticker"></div>
+  <div class="layout">
+    <aside class="side">
+      <small>MENU</small>
+      <button class="nav active" data-view="dashboard">◆ Dashboard</button>
+      <button class="nav" data-view="market">◉ Mercado</button>
+      <button class="nav" data-view="portfolio">▣ Portfólio</button>
+      <button class="nav" data-view="team">♙ Equipa</button>
+      <button class="nav" data-view="missions">◆ Missões</button>
+      <button class="nav" data-view="reports">▤ Relatórios</button>
+      <button class="nav" data-view="broker">⌁ Corretora</button>
+      <button class="nav" data-view="chat">✦ Chefe / Chat</button>
+      <button class="nav" data-view="governance">◉ Governance</button>
+    </aside>
+
+    <main class="content">
+      <section id="dashboard" class="view active">
+        <div class="page-head"><div><h2>Command Center</h2><div class="muted">Sala de trabalho dos agentes · supervisionada pelo Owner</div></div><button class="btn success" onclick="refreshAll()">Atualizar</button></div>
+        <div class="stats">
+          <div class="card"><div class="stat-label">Robôs no escritório</div><div id="sAgents" class="stat-value">10</div><div class="muted">4 registados · 6 vagas</div></div>
+          <div class="card"><div class="stat-label">A trabalhar</div><div id="sWorking" class="stat-value">0</div><div class="muted">atividade atual</div></div>
+          <div class="card"><div class="stat-label">Bloqueados</div><div id="sBlocked" class="stat-value">0</div><div class="muted">por Governance</div></div>
+          <div class="card"><div class="stat-label">Mercado</div><div id="sMarket" class="stat-value">0</div><div class="muted">ativos monitorizados</div></div>
+        </div>
+        <div class="grid">
+          <section class="panel office"><div class="office-head"><h3>ESCRITÓRIO 32-BIT <span class="muted">· atividade operacional</span></h3><span id="clock" class="muted"></span></div><div id="desks" class="desks"></div></section>
+          <div class="right">
+            <section class="panel"><h3>Património <span class="muted" style="float:right;font-size:10px">READ ONLY</span></h3><div class="money"><div><div class="stat-label">Investido</div><strong id="invested">€0.00</strong></div><div><div class="stat-label">Resultado</div><strong id="result">€0.00</strong></div></div></section>
+            <section class="panel"><h3>Conta conectada <span id="brokerStatus" class="muted" style="float:right;font-size:10px">OFFLINE</span></h3><p id="brokerText" class="muted">Nenhuma corretora conectada. Use a área Corretora para configurar a integração.</p><button class="btn" onclick="showView('broker')">Configurar corretora</button></section>
+            <section class="panel"><h3>Atividade <span class="muted" style="float:right;font-size:10px">LIVE</span></h3><div id="feed" class="feed"></div></section>
+          </div>
+        </div>
+      </section>
+
+      <section id="market" class="view"><div class="page-head"><div><h2>Mercado</h2><div class="muted">Cotações públicas em tempo real via Binance</div></div></div><div class="panel"><table class="table"><thead><tr><th>Ativo</th><th>Preço</th><th>24h</th><th>Estado</th></tr></thead><tbody id="marketTable"></tbody></table></div></section>
+      <section id="portfolio" class="view"><div class="page-head"><div><h2>Portfólio</h2><div class="muted">Área preparada para corretora. Sem execução real neste build.</div></div></div><div class="stats"><div class="card"><div class="stat-label">Saldo</div><div class="stat-value">€0.00</div></div><div class="card"><div class="stat-label">Posições</div><div class="stat-value">0</div></div><div class="card"><div class="stat-label">P/L</div><div class="stat-value">€0.00</div></div><div class="card"><div class="stat-label">Risco</div><div class="stat-value">0%</div></div></div></section>
+      <section id="team" class="view"><div class="page-head"><div><h2>Equipa</h2><div class="muted">Funções atuais e vagas planeadas</div></div><button class="btn primary" onclick="openVacancy()">+ Abrir vaga</button></div><div class="panel"><table class="table"><thead><tr><th>Função</th><th>Skill</th><th>Estado</th></tr></thead><tbody id="teamTable"></tbody></table></div></section>
+      <section id="missions" class="view"><div class="page-head"><div><h2>Missões</h2><div class="muted">Tarefas distribuídas pelo Manager</div></div></div><div class="panel" id="missionsList"></div></section>
+      <section id="reports" class="view"><div class="page-head"><div><h2>Relatórios</h2><div class="muted">Registos de atividade e decisões do escritório</div></div><button class="btn" onclick="downloadReport()">Exportar relatório</button></div><div class="panel"><pre id="reportText" style="white-space:pre-wrap;color:#b7c9db"></pre></div></section>
+      <section id="broker" class="view"><div class="page-head"><div><h2>Corretora</h2><div class="muted">Integração segura · começar por READ ONLY</div></div></div><div class="panel"><h3>Binance</h3><p class="muted">Nunca coloque API keys no navegador. No deploy, as credenciais devem ficar em variáveis de ambiente do backend.</p><div class="row"><div><b>Modo atual</b><br><span class="muted">Market Data / Read Only</span></div><span class="tag">SEGURO</span></div><div class="row"><div><b>Execução real</b><br><span class="muted">Desativada até validação do Owner</span></div><span class="tag">BLOQUEADA</span></div><p class="muted">A ligação autenticada à Binance será adicionada no backend através de BINANCE_API_KEY e BINANCE_API_SECRET. Este build já consome cotações públicas sem precisar de chaves.</p></div></section>
+      <section id="chat" class="view"><div class="page-head"><div><h2>Chefe / Manager</h2><div class="muted">Caixa de diálogo para alinhar expectativas, ideias e desenvolvimento da equipa</div></div></div><div class="panel"><div id="chatBox" class="chat"><div class="msg bot"><b>Manager:</b> Escritório online. Posso organizar missões, analisar o estado da equipa e preparar propostas para sua aprovação.</div></div><div class="chat-row"><input id="chatInput" placeholder="Pergunte ao Manager..."><button class="btn primary" onclick="sendChat()">Enviar</button></div></div></section>
+      <section id="governance" class="view"><div class="page-head"><div><h2>Governance</h2><div class="muted">Controlo do Owner</div></div></div><div class="panel"><div class="row"><div><b>Regra central</b><br><span class="muted">O Manager pode propor novos agentes, mas não pode criá-los ou ativá-los sem autorização do Owner.</span></div><span class="tag">OWNER</span></div><div class="row"><div><b>Execução financeira</b><br><span class="muted">Todas as ordens reais ficam bloqueadas neste build.</span></div><span class="tag">READ ONLY</span></div></div></section>
+    </main>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden"><div class="modal-card"><div style="display:flex;justify-content:space-between"><h3 id="modalTitle">Abrir vaga</h3><button class="btn" onclick="closeModal()">Fechar</button></div><div id="modalBody"></div></div></div>
+
+<script>
+const AGENTS=[
+{id:"agent-01",name:"Manager",role:"Orquestrador",mission:"Organizar o ciclo de análise e distribuir missões.",status:"working"},
+{id:"agent-02",name:"Market Scanner",role:"Analista de Mercado",mission:"Recolher cotações e movimentos.",status:"working"},
+{id:"agent-03",name:"Risk",role:"Gestor de Risco",mission:"Validar sinais e exposição do cenário atual.",status:"working"},
+{id:"agent-04",name:"Executor",role:"Trader Executor",mission:"Execução de ordens — requer autorização do Owner.",status:"blocked"},
+];
+const TEAM=[
+["Manager","orquestração · gestão de agentes","ATIVO"],["CIO","macro · estratégia de investimento","VAGA"],["Market Scanner","price action · liquidez · APIs","ATIVO"],["Fundamentalista","balanços · valuation · macro","VAGA"],["Sentimento","notícias · NLP · sentimento","VAGA"],["Risk Manager","VaR · drawdown · stop-loss · exposição","ATIVO"],["Liquidez / Colateral","margem · caixa · liquidez","VAGA"],["Compliance","KYC/AML · regras · auditoria","VAGA"],["Trader Executor","ordens · slippage · execução","BLOQUEADO"],["Arbitragem","spreads · market structure","VAGA"]
+];
+let prices=[]; let events=[];
+
+document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>showView(b.dataset.view));
+function showView(id){document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===id));}
+async function api(path,opts={}){const r=await fetch(path,opts);if(!r.ok)throw new Error(await r.text());return r.json();}
+document.getElementById("loginForm").onsubmit=async e=>{e.preventDefault();const err=document.getElementById("loginError");err.textContent="";try{await api("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:user.value,password:pass.value})});document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");refreshAll();}catch(x){err.textContent="Utilizador ou palavra-passe inválidos.";}}
+async function logout(){try{await api("/api/logout",{method:"POST"})}catch(e){}location.reload()}
+async function refreshAll(){renderAgents();renderTeam();renderMissions();renderReports();loadMarket();loadState();}
+function renderAgents(){desks.innerHTML=AGENTS.map(a=>`<article class="agent ${a.status==="blocked"?"blocked":""}"><span class="badge">${a.status==="blocked"?"BLOQUEADO":"A TRABALHAR"}</span><div class="avatar">${a.name.split(" ").map(x=>x[0]).join("").slice(0,2)}</div><h3>${a.name}</h3><div class="role">${a.role} · ${a.id}</div><div class="mission">${a.mission}</div><div class="bar"><i style="width:${a.status==="blocked"?15:Math.floor(65+Math.random()*30)}%"></i></div><div class="actions">${a.status==="blocked"?`<button class="btn success" onclick="activateAgent('${a.id}')">Pôr a trabalhar</button>`:`<button class="btn danger" onclick="blockAgent('${a.id}')">Bloquear</button>`}<button class="btn" onclick="agentInfo('${a.id}')">Detalhes</button></div></article>`).join("");sAgents.textContent=10;sWorking.textContent=AGENTS.filter(a=>a.status==="working").length;sBlocked.textContent=AGENTS.filter(a=>a.status==="blocked").length;}
+function renderTeam(){teamTable.innerHTML=TEAM.map(x=>`<tr><td><b>${x[0]}</b></td><td class="muted">${x[1]}</td><td><span class="tag">${x[2]}</span></td></tr>`).join("")}
+function renderMissions(){missionsList.innerHTML=AGENTS.map(a=>`<div class="row"><div><b>${a.name}</b><br><span class="muted">${a.mission}</span></div><span class="tag">${a.status}</span></div>`).join("")}
+function renderReports(){reportText.textContent=`CRYPTO AI MULTI-AGENT — RELATÓRIO\nGerado: ${new Date().toLocaleString("pt-PT")}\n\nGovernance: execução real BLOQUEADA\nAgentes registados: ${AGENTS.length}\nAtivos: ${AGENTS.filter(a=>a.status==="working").length}\nBloqueados: ${AGENTS.filter(a=>a.status==="blocked").length}\nMercado: ${prices.length} ativos\n\nÚLTIMOS EVENTOS\n`+events.slice(-15).reverse().map(e=>`${e.time} | ${e.agent} | ${e.text}`).join("\n");}
+async function loadState(){try{const x=await api("/api/state");if(x.events){events=x.events;feed.innerHTML=events.slice(-8).reverse().map(e=>`<div class="event"><b>${e.agent}</b>${e.text}<br><span>${e.time}</span></div>`).join("");renderReports();}}catch(e){}}
+async function loadMarket(){try{const x=await api("/api/market");prices=x.data||[];sMarket.textContent=prices.length; ticker.innerHTML=prices.map(p=>`<span><b>${p.symbol.replace("USDT","")}</b> &nbsp; $${Number(p.price).toLocaleString("en-US",{maximumFractionDigits:6})} <span class="${Number(p.change)>=0?"up":"down"}">${Number(p.change)>=0?"+":""}${Number(p.change).toFixed(2)}%</span></span>`).join("");marketTable.innerHTML=prices.map(p=>`<tr><td><b>${p.symbol}</b></td><td>$${Number(p.price).toLocaleString("en-US",{maximumFractionDigits:8})}</td><td class="${Number(p.change)>=0?"up":"down"}">${Number(p.change)>=0?"+":""}${Number(p.change).toFixed(2)}%</td><td><span class="tag">LIVE</span></td></tr>`).join("");}catch(e){ticker.innerHTML="<span class='down'>Mercado indisponível — tente atualizar</span>"}}
+async function activateAgent(id){const a=AGENTS.find(x=>x.id===id);if(a){a.status="working";events.push({time:new Date().toLocaleTimeString("pt-PT"),agent:a.name,text:" ativado pelo Owner."});renderAgents();loadState();}}
+async function blockAgent(id){const a=AGENTS.find(x=>x.id===id);if(a){a.status="blocked";events.push({time:new Date().toLocaleTimeString("pt-PT"),agent:a.name,text:" bloqueado pelo Owner."});renderAgents();loadState();}}
+function agentInfo(id){const a=AGENTS.find(x=>x.id===id);openModal(a.name,`<p class="muted">${a.role}</p><p>${a.mission}</p><div class="row"><b>ID</b><span class="tag">${a.id}</span></div><div class="row"><b>Estado</b><span class="tag">${a.status}</span></div>`)}
+function openVacancy(){openModal("Abrir vaga",`<label>Função</label><input id="vacName" placeholder="Ex.: Analista Quantitativo"><label>Skills</label><input id="vacSkill" placeholder="Python · estatística · backtesting · risco"><button class="btn primary" style="margin-top:15px" onclick="addVacancy()">Criar vaga</button>`)}
+function addVacancy(){const n=document.getElementById("vacName").value,s=document.getElementById("vacSkill").value;if(!n)return;TEAM.push([n,s,"VAGA"]);renderTeam();closeModal();events.push({time:new Date().toLocaleTimeString("pt-PT"),agent:"Owner",text:` abriu a vaga ${n}.`});loadState();}
+function openModal(t,b){modalTitle.textContent=t;modalBody.innerHTML=b;modal.classList.remove("hidden")}function closeModal(){modal.classList.add("hidden")}
+async function sendChat(){const i=chatInput,v=i.value.trim();if(!v)return;chatBox.innerHTML+=`<div class="msg me">${escapeHtml(v)}</div>`;i.value="";let reply="Recebido. Vou tratar isso como uma proposta e não executarei operações reais sem autorização do Owner.";if(/mercado|bitcoin|btc|crypto/i.test(v))reply="O Market Scanner está ligado às cotações públicas. Posso organizar uma análise, mas não vou transformar uma observação em ordem real automaticamente.";if(/equipe|agente|robô|funcionário/i.test(v))reply="Posso propor novas funções, missões e vagas. A criação/ativação de novos agentes permanece sob sua aprovação.";chatBox.innerHTML+=`<div class="msg bot"><b>Manager:</b> ${reply}</div>`;chatBox.scrollTop=chatBox.scrollHeight}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
+function downloadReport(){const blob=new Blob([reportText.textContent],{type:"text/plain"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="crypto-ai-report.txt";a.click();URL.revokeObjectURL(a.href)}
+setInterval(()=>clock.textContent=new Date().toLocaleTimeString("pt-PT"),1000);setInterval(loadMarket,30000);
+</script>
+</body>
+</html>
