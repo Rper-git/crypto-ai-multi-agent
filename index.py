@@ -3,7 +3,7 @@ from urllib.request import urlopen, Request
 from urllib.parse import urlparse
 
 USERNAME = os.environ.get("OWNER_USERNAME", "owner")
-PASSWORD = os.environ.get("OWNER_PASSWORD", "ChangeMe-2026!")
+PASSWORD = os.environ.get("OWNER_PASSWORD", "Owner@2026#")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "change-this-secret-in-vercel")
 
 EVENTS = [

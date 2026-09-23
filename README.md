@@ -14,7 +14,7 @@ Versão reconstruída sem framework frontend, para evitar a tela branca causada 
 
 ### Credenciais padrão apenas para o primeiro teste
 - Utilizador: `owner`
-- Palavra-passe: `ChangeMe-2026!`
+- Palavra-passe: `Owner@2026#`
 
 **Troque imediatamente essas credenciais nas Environment Variables.**
 
@@ -29,3 +29,13 @@ Versão reconstruída sem framework frontend, para evitar a tela branca causada 
 - `index.html` — dashboard completo
 - `api/index.py` — login, sessão, estado e proxy de cotações públicas
 - `vercel.json` — roteamento Vercel
+
+
+## Credenciais de acesso
+
+Utilizador padrão: `owner`
+Palavra-passe padrão: `Owner@2026#`
+
+Se já existirem variáveis `OWNER_USERNAME` ou `OWNER_PASSWORD` no Vercel, elas têm prioridade. Para usar estas credenciais padrão, remova essas duas variáveis do projeto no Vercel e faça um novo deploy.
+
+Para produção, recomenda-se definir `OWNER_USERNAME`, `OWNER_PASSWORD` e `SESSION_SECRET` nas Environment Variables do Vercel e não colocar segredos no Git.
